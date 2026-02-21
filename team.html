@@ -77,6 +77,26 @@
       text-decoration: underline;
     }
 
+    h2 {
+      font-family: inherit;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-top: 48px;
+      margin-bottom: 16px;
+    }
+
+    .achievements {
+      list-style: none;
+    }
+
+    .achievements li {
+      margin-bottom: 8px;
+    }
+
+    .achievements li::before {
+      content: "— ";
+    }
+
     .team-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -129,7 +149,7 @@
         <span class="member-name">Christopher</span>
         <div class="member-details">
           <span>Co-founder, Strategy &amp; Operations</span>
-          <span><a href="https://x.com/ChrisInaShell">@ChrisInaShell</a></span>
+          <span><a href="https://x.com/Chris_In_Shell">@Chris_In_Shell</a></span>
         </div>
       </div>
 
@@ -141,6 +161,12 @@
         </div>
       </div>
     </div>
+
+    <h2>Achievements</h2>
+    <ul class="achievements">
+      <li>Optimism Foundation Mission Request: AI Delegate Development / 2025</li>
+      <li>BuidlAI Hack 2025 NEAR AI Agent Bounty / Apr 2025</li>
+    </ul>
 
   </div>
 </body>
