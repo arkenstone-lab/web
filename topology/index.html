@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topology</title>
+<style>
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #ffffff;
+  color: #000000;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 40px 24px;
+}
+
+/* Double border: outer thick, inner thin */
+.frame-outer {
+  max-width: 860px;
+  margin: 0 auto;
+  border: 3px solid #000000;
+  padding: 4px;
+}
+
+.frame-inner {
+  border: 1px solid #000000;
+  padding: 40px;
+}
+
+@media (max-width: 640px) {
+  body {
+    padding: 16px;
+    font-size: 14px;
+  }
+  .frame-inner {
+    padding: 24px;
+  }
+}
+
+/* --- ASCII torus animation --- */
+
+.ascii {
+  overflow-x: auto;
+  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.55rem;
+  line-height: 1.1;
+  margin-bottom: 1rem;
+  min-height: 16em;
+}
+
+@media (max-width: 640px) {
+  .ascii {
+    font-size: 0.38rem;
+  }
+}
+
+/* --- Reading gravity diagonal --- */
+
+h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 0.1rem;
+  line-height: 1.2;
+}
+
+.tagline {
+  font-size: 0.95rem;
+  margin-bottom: 1.25rem;
+}
+
+.cursor-hidden {
+  visibility: hidden;
+}
+
+.explanation {
+  margin-bottom: 1.25rem;
+}
+
+.explanation p {
+  margin-bottom: 0.2rem;
+}
+
+/* --- Terminal Area: links + closure --- */
+
+.links {
+  margin-bottom: 1.25rem;
+}
+
+.links h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.links dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  row-gap: 0.2rem;
+  column-gap: 1.25rem;
+}
+
+.links dt {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.links dd {
+  font-size: 0.85rem;
+}
+
+.credit {
+  text-align: right;
+  font-size: 0.8rem;
+  margin-bottom: 1.25rem;
+}
+
+.credit p {
+  margin-bottom: 0.1rem;
+}
+
+.disclaimer {
+  border-top: 1px solid #000000;
+  padding-top: 0.75rem;
+  font-size: 0.75rem;
+}
+
+.disclaimer p {
+  margin-bottom: 0.1rem;
+}
+
+a {
+  color: #000000;
+  text-decoration: underline;
+}
+</style>
+</head>
+<body>
+<div class="frame-outer">
+<div class="frame-inner">
+
+  <pre class="ascii" id="torus"></pre>
+
+  <h1>T O P O L O G Y</h1>
+  <p class="tagline"><span id="typed"></span><span id="cursor">_</span></p>
+
+  <div class="explanation">
+    <p>Under active development.</p>
+  </div>
+
+  <div class="credit">
+    <p>A project by <a href="/">Arkenstone Labs</a>.</p>
+    <p><a href="mailto:contact@arkenstone-labs.com">contact@arkenstone-labs.com</a></p>
+  </div>
+
+  <div class="disclaimer">
+    <p>Materials here are for illustration and discussion only and do not constitute an offer.</p>
+    <p>Forecasts, simulations, and prior results are not guarantees.</p>
+  </div>
+
+</div>
+</div>
+
+<script>
+// --- Rotating ASCII torus knot animation ---
+// Ported from AsciiTorus.tsx (Preact) to vanilla JS
+(function () {
+  var el = document.getElementById('torus');
+  var CHARS = '.:-=+*#%@';
+  var TAU = Math.PI * 2;
+  var CHAR_ASPECT = 0.5;
+
+  var width = 52, height = 28, fps = 20;
+
+  var R = 2;
+  var r = 0.8;
+  var tubeR = 0.68;
+  var TILT = 0.35;
+  var K2 = 12;
+  var K1 = width * K2 / (2 * (R + r + tubeR + 0.5));
+
+  var angle = 0;
+  var frameId = 0;
+  var lastTime = 0;
+  var interval = 1000 / fps;
+
+  var size = width * height;
+  var output = new Array(size);
+  var zbuf = new Float64Array(size);
+  var maxL = CHARS.length - 1;
+
+  var cosTilt = Math.cos(TILT), sinTilt = Math.sin(TILT);
+  var tStep = 0.012;
+  var sStep = 0.15;
+
+  function renderFrame() {
+    for (var i = 0; i < size; i++) { output[i] = ' '; zbuf[i] = 0; }
+
+    var cosB = Math.cos(angle), sinB = Math.sin(angle);
+
+    for (var t = 0; t < TAU; t += tStep) {
+      var c3t = Math.cos(3 * t), s3t = Math.sin(3 * t);
+      var c2t = Math.cos(2 * t), s2t = Math.sin(2 * t);
+      var rr = R + r * c3t;
+
+      var cx = rr * c2t;
+      var cy = rr * s2t;
+      var cz = r * s3t;
+
+      var dtx = -3 * r * s3t * c2t - 2 * rr * s2t;
+      var dty = -3 * r * s3t * s2t + 2 * rr * c2t;
+      var dtz = 3 * r * c3t;
+      var tlen = Math.sqrt(dtx * dtx + dty * dty + dtz * dtz);
+      var Tx = dtx / tlen, Ty = dty / tlen, Tz = dtz / tlen;
+
+      var refx = 0, refy = 0, refz = 1;
+      var dot = Tx * refx + Ty * refy + Tz * refz;
+      if (Math.abs(dot) > 0.9) {
+        refx = 1; refy = 0; refz = 0;
+        dot = Tx * refx + Ty * refy + Tz * refz;
+      }
+      var nx = refx - dot * Tx;
+      var ny = refy - dot * Ty;
+      var nz = refz - dot * Tz;
+      var nlen = Math.sqrt(nx * nx + ny * ny + nz * nz);
+      nx /= nlen; ny /= nlen; nz /= nlen;
+
+      var bx = Ty * nz - Tz * ny;
+      var by = Tz * nx - Tx * nz;
+      var bz = Tx * ny - Ty * nx;
+
+      for (var s = 0; s < TAU; s += sStep) {
+        var cosS = Math.cos(s), sinS = Math.sin(s);
+
+        var px = cx + tubeR * (cosS * nx + sinS * bx);
+        var py = cy + tubeR * (cosS * ny + sinS * by);
+        var pz = cz + tubeR * (cosS * nz + sinS * bz);
+
+        var snx = cosS * nx + sinS * bx;
+        var sny = cosS * ny + sinS * by;
+        var snz = cosS * nz + sinS * bz;
+
+        var ry1 = py * cosTilt - pz * sinTilt;
+        var rz1 = py * sinTilt + pz * cosTilt;
+        var rx2 = px * cosB + rz1 * sinB;
+        var rz2 = -px * sinB + rz1 * cosB;
+        var ry2 = ry1;
+
+        var nry1 = sny * cosTilt - snz * sinTilt;
+        var nrz1 = sny * sinTilt + snz * cosTilt;
+        var nrx2 = snx * cosB + nrz1 * sinB;
+        var nrz2 = -snx * sinB + nrz1 * cosB;
+        var nry2 = nry1;
+
+        var zd = rz2 + K2;
+        if (zd <= 0) continue;
+        var ooz = 1 / zd;
+
+        var xp = (width / 2 + K1 * ooz * rx2) | 0;
+        var yp = (height / 2 - K1 * CHAR_ASPECT * ooz * ry2) | 0;
+
+        if (xp < 0 || xp >= width || yp < 0 || yp >= height) continue;
+
+        var idx = yp * width + xp;
+        if (ooz <= zbuf[idx]) continue;
+        zbuf[idx] = ooz;
+
+        var L = 0.3 * nrx2 + 0.6 * nry2 - 0.7 * nrz2;
+        var li = L > 0 ? Math.min((L * maxL) | 0, maxL) : 0;
+        output[idx] = CHARS[li];
+      }
+    }
+
+    // Outline pass: mark empty cells adjacent to filled cells
+    for (var j = 0; j < height; j++) {
+      for (var i = 0; i < width; i++) {
+        var idx = j * width + i;
+        if (output[idx] !== ' ') continue;
+        var hasNeighbor = false;
+        if (i > 0 && output[idx - 1] !== ' ' && output[idx - 1] !== '.') hasNeighbor = true;
+        if (i < width - 1 && output[idx + 1] !== ' ' && output[idx + 1] !== '.') hasNeighbor = true;
+        if (j > 0 && output[idx - width] !== ' ' && output[idx - width] !== '.') hasNeighbor = true;
+        if (j < height - 1 && output[idx + width] !== ' ' && output[idx + width] !== '.') hasNeighbor = true;
+        if (hasNeighbor) output[idx] = '.';
+      }
+    }
+
+    // Build string, trim trailing spaces per row
+    var str = '';
+    for (var j = 0; j < height; j++) {
+      var base = j * width;
+      var end = 0;
+      for (var i = width - 1; i >= 0; i--) {
+        if (output[base + i] !== ' ') { end = i + 1; break; }
+      }
+      for (var i = base; i < base + end; i++) str += output[i];
+      if (j < height - 1) str += '\n';
+    }
+
+    el.textContent = str;
+    angle += 0.03;
+  }
+
+  function tick(now) {
+    frameId = requestAnimationFrame(tick);
+    if (now - lastTime < interval) return;
+    lastTime = now - ((now - lastTime) % interval);
+    renderFrame();
+  }
+
+  frameId = requestAnimationFrame(tick);
+})();
+
+// --- Typewriter tagline ---
+// Ported from WelcomeScreen.tsx (Preact) to vanilla JS
+(function () {
+  var TAGLINE = 'An open-source, self-custody wallet for the Octra network.';
+  var typedEl = document.getElementById('typed');
+  var cursorEl = document.getElementById('cursor');
+  var i = 0;
+
+  var typeTimer = setInterval(function () {
+    if (i < TAGLINE.length) {
+      i++;
+      typedEl.textContent = TAGLINE.slice(0, i);
+    } else {
+      clearInterval(typeTimer);
+    }
+  }, 35);
+
+  var cursorVisible = true;
+  setInterval(function () {
+    cursorVisible = !cursorVisible;
+    cursorEl.className = cursorVisible ? '' : 'cursor-hidden';
+  }, 530);
+})();
+</script>
+</body>
+</html>
